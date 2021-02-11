@@ -180,262 +180,33 @@ write_tsv(x = ccPED,                                       # Write file as PED.
           'cavecharr_polySNP.ped')                         # Format acceptable for PLINK. 
 
 
-##### EXPERIMENTING WITH PLOT #####
+##### Plot distribution of loci #####
 
+assembly <- read.csv("LGstats.csv", header = TRUE)                              # Read in contig lengths, summary stats.
 
-assem <- read.csv("assemblystats.csv")
-assem2 <- filter(assem, grepl("assembled-molecule", Type))
-assem3 <- filter(assem2, grepl("total-length", Group))
-assem3$LG <- as.factor(assem3$LG)
-assem3$LG <- gsub("LG", "AC", assem3$LG)
-order(unique(geno$LG)) %in% order(unique(assem3$LG))
-assem3$LG <- gsub("AC1", "AC01", assem3$LG)
-assem3$LG <- gsub("AC2", "AC02", assem3$LG)
-assem3$LG <- gsub("AC3", "AC03", assem3$LG)
-assem3$LG <- gsub("AC4", "AC04", assem3$LG)
-assem3$LG <- gsub("AC5", "AC05", assem3$LG)
-assem3$LG <- gsub("AC6", "AC06", assem3$LG)
-assem3$LG <- gsub("AC7", "AC07", assem3$LG)
-assem3$LG <- gsub("AC8", "AC08", assem3$LG)
-assem3$LG <- gsub("AC9", "AC09", assem3$LG)
-class(geno$LG["AC31"])
-class(assem3$LG["AC31"])
-da <- data.frame(assem3 = unique(assem3$LG),
-                 geno = unique(geno$LG))
+polySNPs <- merge(poly_snps_only[poly_snps_only$LG != 'AC40',],                 # Discard 'contigs' (i.e. AC40)
+                  assembly[,c(5,11)], by = "LG")                                # add coding variable for each chromosome.
 
-assem3$Length <- as.integer(assem3$Length)
-SNP_perLG <- geno2 %>% 
-  group_by(LG) %>% 
-  summarise(no_rows = length(LG))
-y <- merge(SNP_perLG, assem4) 
-
-assem4 <- read.csv("chrs.csv")
-class(assem3$Length)
-assem3$Length <- as.numeric(assem3$Length)
-y2 <- y %>% mutate(den = (Length / no_rows))
-# `Physical position` > '40000000' ~ 'AC04q.1',   # Above is AC04q.1
-# `Physical position` < '40000000' ~ 'AC29')))    # Below is AC29. 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-###############################################################################################
-####### FEB 10 - best I have! Figure out Q thing now and come back - will be easier I think.
-
-assem4$chr <- sub(x=assem4$LG, "AC","")
-assem4$chr <- as.numeric(assem4$chr)
-assem4$chr <- sub(x = assem4$chr, "q|p","")
-assem4$num <- c(1:nrow(assem4))
-
-
-poly_snps_only <- poly_snps_only[poly_snps_only$LG != 'AC40',]
-
-
-poly_snps <- merge(poly_snps_only, assem4[,c(4,9)], by = 'LG')
-
-
-chroms <- ggplot() +
-  geom_segment(data = assem4,
-               aes(x = chr, xend = chr, y = 0, yend = as.numeric(Length)),
+chroms <- ggplot() +                                                            # Plot chromosome sizes.
+  geom_segment(data = assembly,                                                 
+               aes(x = num, xend = num, y = 0, yend = as.numeric(Length)),      # Lengths for each linkage group, rounded ends.
                    lineend = "round", color = "grey", size = 3) +
-  scale_x_continuous(breaks = 1:nrow(assem4), 
-                   labels = c(assem4$LG)) + mytheme
+  scale_x_continuous(breaks = 1:nrow(assem4),                                   # Properly labels LGs based on coding variable.
+                   labels = c(assem4$LG)) + mytheme                             # custom theme.
 
-plot(chroms)
+plot(chroms)                                                                    # Plot LGs.
 
-loci <- chroms +
-  geom_segment(data = poly_snps,
-               aes(x = chr-0.1, xend = chr+0.1, 
+loci <- chroms +                                                                # Plot loci on LGs.
+  geom_segment(data = polySNPs,                                                 # Only use polymorphic loci on known LGs.
+               aes(x = num-0.1, xend = num+0.1, 
                    y = Position, yend = Position), size = 0.1) 
 
-plot(loci) + mytheme + 
+plot(loci) + mytheme +                                                          # Tidy plot.     
   xlab("") + ylab("Position (bp)") +
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
-
-##############################################################################################3
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# unique(snps$LG) %ni% unique(chrs$LG)
-# 
-# # snps2 <- snps[,-c(13)]
-# 
-# o <- p + geom_rect(data = snps2, aes(xmin = chr-0.2,
-#                                     xmax = chr+0.2,
-#                                     ymax = Position-1000, ymin = Position+1000))
-# plot(o)
-# 
-# 
-# 
-# data <- data.frame(chr = paste0("chr", 1:4),
-# size = c(100, 400, 300, 200))
-# 
-# SNP <- data.frame(chr = paste0("chr", c(1, 1, 2, 3, 3, 4)),
-#                   pos = c(50, 70, 250, 20, 290, 110),
-#                   type = c("A", "A", "A", "B", "B", "B"))
-# 
-# 
-# ggplot() +
-#   geom_segment(data = data,
-#                aes(x = chr, xend = chr, y = 0, yend = size),
-#                lineend = "round", color = "lightgrey", size = 5) +
-#   geom_segment(data = SNP,
-#                aes(x = as.integer(chr) - 0.05, xend = as.integer(chr) + 0.05,
-#                    y = pos, yend = pos, color = type),
-#                size = 1) +
-#   theme_minimal()
-# 
-# sum(is.na(SNP))
-# 
-# 
-# dat <- structure(list(chromosome = 1:14, size = c(640851L, 947102L, 
-#                                                   1067971L, 1200490L, 1343557L, 1418242L, 1445207L, 1472805L, 1541735L, 
-#                                                   1687656L, 2038340L, 2271494L, 2925236L, 3291936L)), .Names = c("chromosome")) 
-# bp <- barplot(dat$size, border = NA)
-# 
-# marks <- structure(list(Chromosome = c(3L, 12L, 13L, 5L, 11L, 14L), Position = c(817702L, 
-#                                                                                  1556936L, 1131566L, 1041685L, 488717L, 1776463L), Type = structure(c(1L, 
-#                                                                                                                                                       1L, 1L, 2L, 2L, 2L), .Label = c("A", "B"), class = "factor")), .Names = c("Chromosome", 
-#                                                                                                                                                                                                                                 "Position", "Type"), class = "data.frame", row.names = c(NA, 
-#                                                                                                                                                                                                                                                                                          -6L))
-# test <- structure(list(chromosome = c(chrs$chr), Length = c(chrs$Length)))
-# 
-# p <- ggplot() +
-#   geom_segment(data = chrs, 
-#                aes(x = LG, xend = LG, y = as.numeric(0), yend = as.numeric(Length)),
-#                lineend = "round", color = "grey", size = 4) 
-# 
-# chrs2 <- chrs[order(chrs$chr, decreasing = FALSE),]
-# rownames(chrs2) <- chrs2$chr
-snps2 <- snps[order(snps$chr, decreasing = FALSE),]
-# 
-# n <- barplot(chrs2$Length, names = chrs2$chr)
-# # p
-# 
-# # 
-chrs$chr <- sub(x = chrs$LG, "AC", "")
-chrs$chr <- as.integer(chrs$chr)
-# 
-# j <- ggplot() +
-#   geom_segment(data = chrs,
-#                aes(x=chr, xend = chr, y = 0, yend = as.numeric(Length)),
-#                lineend = "round", color = "grey", size = 4)
-# j
-
-unique(chrs2$chr)
-unique(snps2$chr)
-
-
-
-
-# with(marks,
-#      segments(
-#        bp[Chromosome,]-0.5,
-#        Position,
-#        bp[Chromosome,]+0.5,
-#        Position,
-#        col=Type,
-#        lwd=2, 
-#        lend=1
-#      )
-# )
-
-class(bp[Chromosome,])
-class(snps$LG)
-
-snps$chr <- sub(x = snps$LG, pattern = "AC", replacement = "")
-snps$chr <- as.integer(snps$chr)
-
-
-
-
-# BELOW WORKS - although Physical position numbers are seemingly wrong. Not sure why.
-
-with(snps2,
-     segments(
-       n[chr]-0.5,
-       Position,
-       n[chr]+0.5,
-       Position,
-       lwd=1, lend=1
-     ))
-
-
-
-
-
-
-
-# https://stackoverflow.com/questions/33727432/how-to-plot-positions-along-a-chromosome-graphic
-# Above see answer by thelatemail. 
-
-
-
-
-
-
-
-
-
+# Note that the above plot is simply polymorphic loci. 
+     # Upon further filtering, redo above visualization. 
 
 #### 3. PLINK FORMATTING ####
 
@@ -450,18 +221,3 @@ dim(snps_in_LD) #34 loci in LDE.
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#
